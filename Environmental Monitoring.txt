@@ -1,0 +1,120 @@
+#include <LiquidCrystal.h>
+#include <SoftwareSerial.h>
+#include "DHT.h"
+LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
+SoftwareSerial esp(3, 2);
+
+#define splash splash1
+String network = "Dust";
+String password = "1234567890";
+#define IP "184.106.153.149"
+String GET = "GET /update?api_key=LOHXFQKTO4W6S8SO";
+#define Gas A0
+#define DHTPIN A1
+#define dusled A3
+#define dussens A2
+#define buz 7
+#define DHTTYPE DHT11
+int a, b;
+DHT dht(DHTPIN, DHTTYPE);
+int DispDelay;
+int gas_r, hum;
+float dus_out;
+float temp;
+int tu = 35;
+String out;
+void setup()
+{
+// setup code, to run once:
+Serial.begin(115200);
+dht.begin();
+pinMode(Gas, INPUT);
+pinMode(buz, OUTPUT);
+digitalWrite(buz, LOW);
+esp.begin(115200);
+LcDSet();
+setupEsp8266(); 
+lcd.clear();
+}
+void LcDSet() {
+lcd.begin(16, 2);
+// Print a message to the LCD.
+lcd.clear();
+splash(0, "Air Pollution");
+splash(1, "Monitoring");
+delay(1000);
+}
+void loop() {
+tu++;
+setDisp();
+float h = dht.readHumidity();
+// Read temperature as Celsius (the default)
+float t = dht.readTemperature();
+gas_r = analogRead(Gas);
+dus_out = dust(dusled, dussens);
+temp = t;
+hum = h;
+if (gas_r > 550) {
+digitalWrite(buz, HIGH);
+delay(100);
+digitalWrite(buz, LOW);
+delay(25);
+digitalWrite(buz, HIGH);
+delay(100);
+digitalWrite(buz, LOW);
+delay(25);
+digitalWrite(buz, HIGH);
+}
+else {
+digitalWrite(buz, LOW);
+}
+Serial.println(dus_out);
+delay(300);
+if (tu >= 60) {
+send2();
+tu = 0;
+} 
+}
+void setDisp() {
+if (DispDelay >= 0 and DispDelay < 20) {
+display_T(temp, hum);
+}
+else if (DispDelay >= 20 and DispDelay < 40) {
+display_ard(gas_r, dus_out);
+}
+else {
+DispDelay = 0;
+}
+DispDelay++;
+}
+void send2() {
+splash(0, "Please Wait");
+splash(1, "Sending Data");
+updateServer(String(temp), String(hum), String(gas_r), String(dus_out));
+delay(3000);
+lcd.clear();
+}
+void display_ard(int val1 , float val2) {
+lcd.setCursor(0, 0);
+lcd.print("G: ");
+lcd.setCursor(3, 0);
+lcd.print(val1);
+lcd.setCursor(0, 1);
+lcd.print("D: ");
+lcd.setCursor(3, 1);
+lcd.print(val2);
+lcd.print(" mg/m3 ");
+}
+void display_T(float val1 , int val2) {
+lcd.setCursor(0, 0);
+lcd.print("T: ");
+lcd.setCursor(3, 0);
+lcd.print(val1);
+lcd.print(char(223));
+lcd.print(" C ");
+lcd.setCursor(0, 1);
+lcd.print("H: ");
+lcd.setCursor(3, 1);
+lcd.print(val2);
+lcd.print(" % ");
+} 
